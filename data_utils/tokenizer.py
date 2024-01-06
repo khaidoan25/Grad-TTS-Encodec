@@ -32,8 +32,10 @@ from lhotse import CutSet, NumpyHdf5Writer
 from lhotse.recipes.utils import read_manifests_if_cached
 from tqdm.auto import tqdm
 
-from valle.data import (
-    AudioTokenConfig,
+from data_utils.audio_processor import (
+    # AudioTokenConfig,
+    AudioToken16KHzConfig,
+    AudioToken24KHzConfig,
     AudioTokenExtractor,
 )
 
@@ -65,16 +67,10 @@ def get_args():
         help="Path to the tokenized files",
     )
     parser.add_argument(
-        "--text-extractor",
-        type=str,
-        default="espeak",
-        help="espeak or pypinyin or pypinyin_initials_finals",
-    )
-    parser.add_argument(
         "--audio-extractor",
         type=str,
         default="Encodec",
-        help="Encodec or Fbank",
+        help="Using Encodec for extractor",
     )
     parser.add_argument(
         "--dataset-parts",
@@ -100,6 +96,12 @@ def get_args():
         default=400.0,
         help="The maximum number of audio seconds in a batch."
         "Determines batch size dynamically.",
+    )
+    
+    parser.add_argument(
+        "--sample-rate",
+        type=int,
+        help="Sample rate of the dataset."
     )
 
     return parser.parse_args()
@@ -133,9 +135,16 @@ def main():
     )
 
     audio_extractor = None
+    if args.sample_rate == 16000:
+        audiotokenconfig = AudioToken16KHzConfig()
+    elif args.sample_rate == 24000:
+        audiotokenconfig = AudioToken24KHzConfig()
+    else:
+        raise NotImplementedError("Check the sample rate argument")
+    
     if args.audio_extractor:
         if args.audio_extractor == "Encodec":
-            audio_extractor = AudioTokenExtractor(AudioTokenConfig())
+            audio_extractor = AudioTokenExtractor(audiotokenconfig)
         else:
             raise NotImplementedError(f"{args.audio_extractor} not implemented")
 
@@ -172,7 +181,7 @@ def main():
                     )
 
                 if args.prefix.lower() in ["ljspeech", "aishell", "baker"]:
-                    cut_set = cut_set.resample(24000)
+                    cut_set = cut_set.resample(args.sample_rate)
                     # https://github.com/lifeiteng/vall-e/issues/90
                     # if args.prefix == "aishell":
                     #     # NOTE: the loudness of aishell audio files is around -33
@@ -203,6 +212,9 @@ def main():
                             executor=ex,
                             storage_type=NumpyHdf5Writer,
                         )
+
+            cuts_filename = f"{prefix}cuts_{partition}.{args.suffix}"
+            cut_set.to_file(f"{args.output_dir}/{cuts_filename}")
 
 if __name__ == "__main__":
     formatter = (
