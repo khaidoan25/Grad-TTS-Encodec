@@ -1,2 +1,4 @@
 run/
 *pycache*
+logs
+monotonic_align
