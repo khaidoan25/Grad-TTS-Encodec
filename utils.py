@@ -39,10 +39,11 @@ def load_checkpoint(logdir, model, num=None):
         model_path = latest_checkpoint_path(logdir, regex="grad_*.pt")
     else:
         model_path = os.path.join(logdir, f"grad_{num}.pt")
+    prev_epoch = int(model_path.split('/')[-1][5:-3])
     print(f'Loading checkpoint {model_path}...')
-    model_dict = torch.load(model_path, map_location=lambda loc, storage: loc)
+    model_dict = torch.load(model_path, map_location="cuda")
     model.load_state_dict(model_dict, strict=False)
-    return model
+    return model, prev_epoch
 
 
 def save_figure_to_numpy(fig):

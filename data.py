@@ -11,6 +11,7 @@ import numpy as np
 
 import torch
 import torchaudio as ta
+from lhotse import CutSet
 
 from text import text_to_sequence, cmudict
 from text.symbols import symbols
@@ -22,6 +23,61 @@ import sys
 sys.path.insert(0, 'hifi-gan')
 from meldataset import mel_spectrogram
 
+
+class TextAudioCodeDataset(torch.utils.data.Dataset):
+    def __init__(self, data_path, cmudict_path, add_blank=True):
+        self.cuts = CutSet.from_file(data_path)
+        self.cmudict = cmudict.CMUDict(cmudict_path)
+        self.add_blank = add_blank
+        
+    def get_text(self, cut):
+        text = cut.supervisions[0].text
+        text_norm = text_to_sequence(text, dictionary=self.cmudict)
+        if self.add_blank:
+            text_norm = intersperse(text_norm, len(symbols))
+        text_norm = torch.IntTensor(text_norm)
+        return text_norm
+    
+    def get_audiotoken(self, cut):
+        return torch.Tensor(cut.load_features()).permute(1, 0)
+    
+    def __getitem__(self, idx):
+        text = self.get_text(self.cuts[idx])
+        audiotoken = self.get_audiotoken(self.cuts[idx])
+        return {'y': audiotoken, 'x': text}
+    
+    def __len__(self):
+        return len(self.cuts)
+
+    def sample_test_batch(self, size):
+        idx = np.random.choice(range(len(self)), size=size, replace=False)
+        test_batch = []
+        for index in idx:
+            test_batch.append(self.__getitem__(index))
+        return test_batch
+    
+class TextAudioCodeBatchCollate(object):
+    def __call__(self, batch):
+        B = len(batch)
+        y_max_length = max([item['y'].shape[-1] for item in batch])
+        y_max_length = fix_len_compatibility(y_max_length)
+        x_max_length = max([item['x'].shape[-1] for item in batch])
+        n_feats = batch[0]['y'].shape[-2]
+
+        y = torch.zeros((B, n_feats, y_max_length), dtype=torch.float32)
+        x = torch.zeros((B, x_max_length), dtype=torch.long)
+        y_lengths, x_lengths = [], []
+
+        for i, item in enumerate(batch):
+            y_, x_ = item['y'], item['x']
+            y_lengths.append(y_.shape[-1])
+            x_lengths.append(x_.shape[-1])
+            y[i, :, :y_.shape[-1]] = y_
+            x[i, :x_.shape[-1]] = x_
+
+        y_lengths = torch.LongTensor(y_lengths)
+        x_lengths = torch.LongTensor(x_lengths)
+        return {'x': x, 'x_lengths': x_lengths, 'y': y, 'y_lengths': y_lengths}
 
 class TextMelDataset(torch.utils.data.Dataset):
     def __init__(self, filelist_path, cmudict_path, add_blank=True,
