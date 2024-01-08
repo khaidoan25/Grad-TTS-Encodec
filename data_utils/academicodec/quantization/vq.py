@@ -12,7 +12,7 @@ from dataclasses import field
 import torch
 from torch import nn
 
-from academicodec.quantization.core_vq import ResidualVectorQuantization
+from data_utils.academicodec.quantization.core_vq import ResidualVectorQuantization
 
 
 @dataclass

@@ -9,9 +9,9 @@ import typing as tp
 import numpy as np
 import torch.nn as nn
 
-from academicodec.modules import SConv1d
-from academicodec.modules import SConvTranspose1d
-from academicodec.modules import SLSTM
+from data_utils.academicodec.modules import SConv1d
+from data_utils.academicodec.modules import SConvTranspose1d
+from data_utils.academicodec.modules import SLSTM
 
 
 class SEANetResnetBlock(nn.Module):

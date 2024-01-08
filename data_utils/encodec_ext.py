@@ -1,7 +1,7 @@
 import math
 import typing as tp
 
-from academicodec.models.encodec.net3 import SoundStream
+from data_utils.academicodec.models.encodec.net3 import SoundStream
 
 from encodec.model import EncodecModel, EncodedFrame
 from encodec.modules.seanet import SEANetDecoder, SEANetEncoder
@@ -104,21 +104,22 @@ class EncodecModelExtend(EncodecModel):
         return codes
     
 class Encodec16KHz(SoundStream):
-    def __init__(self, n_filters=32, D=512, target_bandwidths=[1, 1.5, 2, 4, 6, 12], ratios=[8, 5, 4, 2], sample_rate=16_000, bins=1024, normalize=False):
+    def __init__(self, target_bw: tp.Optional[int] = 6 | 12, n_filters=32, D=512, target_bandwidths=[1, 1.5, 2, 4, 6, 12], ratios=[8, 5, 4, 2], sample_rate=16_000, bins=1024, normalize=False):
         super().__init__(n_filters, D, target_bandwidths, ratios, sample_rate, bins, normalize)
         self.sample_rate = sample_rate
         self.channels = 1
+        self.target_bw = target_bw
         
     def get_emb(self, x):
         e = self.encoder(x)
         
         return e
     
-    def encode_emb(self, e, target_bw=6, st=None):
-        if target_bw is None:
+    def encode_emb(self, e, st=None):
+        if self.target_bw is None:
             bw = self.target_bandwidths[-1]
         else:
-            bw = target_bw
+            bw = self.target_bw
         if st is None:
             st = 0
         codes = self.quantizer.encode(e, self.frame_rate, bw, st)

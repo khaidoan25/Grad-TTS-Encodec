@@ -3,9 +3,9 @@ import random
 
 import numpy as np
 import torch.nn as nn
-from academicodec.modules.seanet import SEANetDecoder
-from academicodec.modules.seanet import SEANetEncoder
-from academicodec.quantization import ResidualVectorQuantizer
+from data_utils.academicodec.modules.seanet import SEANetDecoder
+from data_utils.academicodec.modules.seanet import SEANetEncoder
+from data_utils.academicodec.quantization import ResidualVectorQuantizer
 
 
 # Generator

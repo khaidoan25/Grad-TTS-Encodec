@@ -37,7 +37,7 @@ from einops import rearrange
 from einops import repeat
 from torch import nn
 
-from academicodec.quantization.distrib import broadcast_tensors
+from data_utils.academicodec.quantization.distrib import broadcast_tensors
 
 
 def default(val: tp.Any, d: tp.Any) -> tp.Any:

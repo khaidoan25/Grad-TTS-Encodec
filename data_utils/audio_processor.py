@@ -7,8 +7,8 @@ import torch
 import torchaudio
 from collections import OrderedDict
 
-from encodec_ext import EncodecModelExtend
-from encodec_ext import Encodec16KHz
+from data_utils.encodec_ext import EncodecModelExtend
+from data_utils.encodec_ext import Encodec16KHz
 
 from encodec.utils import convert_audio
 from lhotse.features import FeatureExtractor
@@ -88,15 +88,17 @@ class AudioTokenizerExt:
         elif sample_rate == 48000:
             model = EncodecModelExtend.encodec_model_48khz()
         elif sample_rate == 16000:
-            model = Encodec16KHz()
-            parameter_dict = torch.load("checkpoint/encodec_16k_320d.pth")
+            model = Encodec16KHz(target_bw=6)
+            parameter_dict = torch.load("data_utils/checkpoint/encodec_16k_320d.pth")
             new_state_dict = OrderedDict()
             # k 为 module.xxx.weight, v 为权重
             for k, v in parameter_dict.items():
                 # 截取`module.`后面的xxx.weight
                 name = k[7:]
                 new_state_dict[name] = v
-            model.load_state_dict(new_state_dict) 
+            model.load_state_dict(new_state_dict)
+        else:
+            raise ValueError(f"{sample_rate}")
         remove_encodec_weight_norm(model)
 
         if not device:
@@ -125,8 +127,10 @@ class AudioTokenizerExt:
         return self.codec.encode_emb(x)
 
     def decode(self, frames: torch.Tensor) -> torch.Tensor:
-        return self.codec.decode(frames)
-
+        if self.sample_rate == 24000 or self.sample_rate == 48000:
+            return self.codec.decode([(frames, None)])
+        else:
+            return self.codec.decode(frames)
 
 def tokenize_audio(tokenizer: AudioTokenizer, audio_path: str):
     # Load and pre-process the audio waveform
